@@ -8,7 +8,7 @@ Is there any relationship between how long a review is and how helpful other use
 
 Do the short review titles (summaries) relate in any way to the star ratings customers give?
 
-By answering these questions, this project not only looks at online consumer habits but also shows how modern cloud tools can be used to tackle and make sense of huge, messy datasets. This report walks through the entire process — starting with a look at related research, then diving into how the system was built, followed by a discussion of the results, what they mean, and where things could go from here.
+By answering these questions, this project not only looks at online consumer habits but also shows how modern cloud tools can be used to tackle and make sense of huge, messy datasets. This project walks through the entire process — starting with a look at related research, then diving into how the system was built, followed by a discussion of the results, what they mean, and where things could go from here.
 
 To tackle my research questions, I followed a quantitative approach centered on analyzing existing data through statistical methods.
 
