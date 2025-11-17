@@ -1,0 +1,116 @@
+from pyspark.sql.functions import col, length
+
+
+
+storage_account_name = "dissprojectstorage"
+container_name = "project-data"
+file_name = "Electronics_5.json"
+access_key = ''
+
+
+sql_server_name = "diss-sql-server"
+sql_database_name = "ProjectResultsDB"
+sql_user = "webserver"
+sql_password = "asdfgh@#12345"
+
+
+print("Loading data from Azure Blob Storage...")
+
+
+spark.conf.set(
+    f"fs.azure.account.key.{storage_account_name}.blob.core.windows.net",
+    access_key
+)
+
+
+input_path = f"wasbs://{container_name}@{storage_account_name}.blob.core.windows.net/{file_name}"
+df = spark.read.json(input_path)
+
+
+df.cache()
+
+print("Data loaded successfully.")
+df.printSchema()
+
+
+# Analysis 1: Rating Distribution
+print("\nStarting Analysis 1: Rating Distribution...")
+
+rating_counts_df = df.groupBy("overall").count().withColumnRenamed("count", "ReviewCount").orderBy("overall")
+rating_counts_df.show()
+
+
+sql_output_table_name_1 = "dbo.Analysis1_RatingDistribution"
+rating_counts_df.write \
+    .format("jdbc") \
+    .mode("overwrite") \
+    .option("url", f"jdbc:sqlserver://{sql_server_name}.database.windows.net;databaseName={sql_database_name};") \
+    .option("dbtable", sql_output_table_name_1) \
+    .option("user", sql_user) \
+    .option("password", sql_password) \
+    .option("driver", "com.microsoft.sqlserver.jdbc.SQLServerDriver") \
+    .save()
+print(f"Analysis 1 results saved to {sql_output_table_name_1}")
+
+
+# --- Analysis 2: Helpfulness vs. Review Length ---
+print("\nStarting Analysis 2: Helpfulness vs. Review Length...")
+
+helpfulness_df = df.withColumn("ReviewLength", length(col("reviewText"))) \
+                     .withColumn("HelpfulnessScore", col("helpful")[0]) \
+                     .select("overall", "ReviewLength", "HelpfulnessScore")
+
+
+avg_helpfulness_df = helpfulness_df.groupBy("overall") \
+    .agg({
+        "ReviewLength": "avg",
+        "HelpfulnessScore": "avg"
+    }) \
+    .withColumnRenamed("avg(ReviewLength)", "AverageReviewLength") \
+    .withColumnRenamed("avg(HelpfulnessScore)", "AverageHelpfulness") \
+    .orderBy("overall")
+avg_helpfulness_df.show()
+
+
+sql_output_table_name_2 = "dbo.Analysis2_HelpfulnessByRating"
+avg_helpfulness_df.write \
+    .format("jdbc") \
+    .mode("overwrite") \
+    .option("url", f"jdbc:sqlserver://{sql_server_name}.database.windows.net;databaseName={sql_database_name};") \
+    .option("dbtable", sql_output_table_name_2) \
+    .option("user", sql_user) \
+    .option("password", sql_password) \
+    .option("driver", "com.microsoft.sqlserver.jdbc.SQLServerDriver") \
+    .save()
+print(f"Analysis 2 results saved to {sql_output_table_name_2}")
+
+
+# Analysis 3: Review Summary Length Analysis
+print("\nStarting Analysis 3: Summary Length Analysis...")
+
+summary_length_df = df.withColumn("SummaryLength", length(col("summary"))) \
+                        .select("overall", "SummaryLength")
+
+
+avg_summary_length_df = summary_length_df.groupBy("overall") \
+    .agg({"SummaryLength": "avg"}) \
+    .withColumnRenamed("avg(SummaryLength)", "AverageSummaryLength") \
+    .orderBy("overall")
+avg_summary_length_df.show()
+
+
+sql_output_table_name_3 = "dbo.Analysis3_SummaryLengthByRating"
+avg_summary_length_df.write \
+    .format("jdbc") \
+    .mode("overwrite") \
+    .option("url", f"jdbc:sqlserver://{sql_server_name}.database.windows.net;databaseName={sql_database_name};") \
+    .option("dbtable", sql_output_table_name_3) \
+    .option("user", sql_user) \
+    .option("password", sql_password) \
+    .option("driver", "com.microsoft.sqlserver.jdbc.SQLServerDriver") \
+    .save()
+print(f"Analysis 3 results saved to {sql_output_table_name_3}")
+
+
+df.unpersist()
+print("\nProcessing complete.")
